@@ -7,10 +7,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class Room extends JPanel implements ActionListener {
-    private final String[] content;
-    public Room(String[] c){
+    private final PostgresConnect connection;
+    private final int ID;
+    public Room(PostgresConnect c, int i){
         super(false);
-        content = c;
+        ID = i;
+        connection = c;
 
 
     }

@@ -104,9 +104,9 @@ public class UserView extends JFrame{
         numOfRooms = new Stack<String>();
         numOfRooms.push("ANY");
         try{
-            ResultSet result = connection.runSQL("SELECT COUNT(hotelID) FROM rooms GROUP BY hotelID");
+            ResultSet result = connection.runSQL("SELECT numOfRooms FROM hotels");
             while (result.next()){
-                String temp = String.valueOf(result.getInt("count"));
+                String temp = String.valueOf(result.getInt("numOfRooms"));
                 if (!numOfRooms.contains(temp)) {
                     numOfRooms.push(temp);
                 }
@@ -142,14 +142,14 @@ public class UserView extends JFrame{
         btn = new JButton(new AbstractAction("Get Available Rooms") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String[] query = new String[8];
-                query[0] = "nothing yet";
-                query[1] = "also nothing";
-                query[2] = roomCapacitiesDropDown.getSelectedItem().toString();
-                query[3] = addressesDropDown.getSelectedItem().toString();
-                query[4] = hotelChainDropDown.getSelectedItem().toString();
-                query[5] = categoriesDropDown.getSelectedItem().toString();
-                query[6] = numOfRoomsDropDown.getSelectedItem().toString();
+                Object[] query = new Object[8];
+                query[0] = checkInDate.getModel().getValue();
+                query[1] = checkOutDate.getModel().getValue();
+                query[2] = roomCapacitiesDropDown.getSelectedItem();
+                query[3] = addressesDropDown.getSelectedItem();
+                query[4] = hotelChainDropDown.getSelectedItem();
+                query[5] = categoriesDropDown.getSelectedItem();
+                query[6] = numOfRoomsDropDown.getSelectedItem();
                 query[7] = priceInput.getText();
                 new RoomView(connection, query).setVisible(true);
             }
