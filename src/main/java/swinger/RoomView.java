@@ -1,45 +1,52 @@
 package swinger;
 
+import org.jdatepicker.impl.SqlDateModel;
 import postgresql.PostgresConnect;
 
 import java.sql.*;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.*;
 
 public class RoomView extends JFrame implements ActionListener {
-    private PostgresConnect connection;
-    private Object[] stats;
-    private final ArrayList<Room> rooms;
+    private final PostgresConnect connection;
+    private final Object[] stats;
+    private final ArrayList<Integer> rooms;
+    private final String query;
+    private JRadioButton[] radios;
+    private String selection;
+    private final ButtonGroup group = new ButtonGroup();
+    private JButton bookBtn;
+    private JTextField customerSSN;
+    private JTextField customerName;
+    private JTextField customerAddress;
+
     public RoomView(PostgresConnect c, Object[] s){
         super("Available Rooms");
         connection = c;
         stats = s;
-        String q;
+        rooms = new ArrayList<Integer>();
+
+        setSize(1600,400);
+        setResizable(false);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        query = getSQLquery();
         try {
-            q = getSQLquery();
-            try {
-                ResultSet result = connection.runSQL(q);
-                while (result.next()){
-                    System.out.println(result.getInt("roomID"));
-                }
-            } catch (SQLException e){
-                System.out.println("smn else");
+            ResultSet result = connection.runSQL(query);
+            while (result.next()){
+                rooms.add(result.getInt("roomID"));
             }
-        } catch (NullPointerException e){
-            JOptionPane.showMessageDialog(this, "Check-in and Check-out Date Required.");
+            initComponents();
+        } catch (SQLException e){
+            System.out.println("smn else");
         }
 
 
 
-        rooms = null;
-        initComponents();
-
-        setSize(1200,800);
-        setResizable(false);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     }
 
     private String getSQLquery(){
@@ -122,11 +129,11 @@ public class RoomView extends JFrame implements ActionListener {
     }
 
     private String getCapacity(String s){
-        return " AND roomID IN (SELECT roomID FROM rooms WHERE capacity = \'" + s + "\')";
+        return " AND roomID IN (SELECT roomID FROM rooms WHERE capacity = '" + s + "')";
     }
 
     private String getStreet(String s){
-        return " AND roomID IN (SELECT roomID FROM rooms NATURAL JOIN hotels WHERE addressName = \'" + s + "\')";
+        return " AND roomID IN (SELECT roomID FROM rooms NATURAL JOIN hotels WHERE addressName = '" + s + "')";
     }
 
     private String getCategory(String s){
@@ -154,11 +161,198 @@ public class RoomView extends JFrame implements ActionListener {
     }
 
     private void initComponents(){
-        setLayout(new GridLayout(0,2,1,1));
+        setLayout(new GridLayout(0,1));
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.ipadx = 20;
+        c.ipady = 5;
+        JScrollPane scrollPane = new JScrollPane(panel);
+        scrollPane.setBounds(0,0,1600, Integer.MAX_VALUE);
+        getContentPane().add(scrollPane);
+        radios = new JRadioButton[rooms.size()];
+        for (int i = 0; i < rooms.size(); i++) {
+            Room temp = new Room(connection, rooms.get(i));
+            try {
+                JPanel[] arr = temp.newRoomPanel();
+                for (int j = 0; j < 10; j++){
+                    c.ipadx = 20;
+                    c.gridx = j;
+                    c.gridy = i;
+                    panel.add(arr[j], c);
+                }
+                c.gridx = 10;
+                radios[i] = new JRadioButton();
+                radios[i].setActionCommand(String.valueOf(rooms.get(i)));
+                group.add(radios[i]);
+                radios[i].addActionListener(this);
+                panel.add(radios[i], c);
+
+            } catch (SQLException e){
+                System.out.println("Error processing SQL query...");
+                e.printStackTrace();
+                continue;
+            }
+        }
+
+
+        c.gridx = 11;
+        c.gridy = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+
+        JLabel temp = new JLabel("SSN:  ");
+        temp.setHorizontalAlignment(SwingConstants.RIGHT);
+        panel.add(temp, c);
+        c.gridy = GridBagConstraints.RELATIVE;
+
+        temp = new JLabel("Name:  ");
+        temp.setHorizontalAlignment(SwingConstants.RIGHT);
+        panel.add(temp, c);
+        c.gridy = GridBagConstraints.RELATIVE;
+
+        temp = new JLabel("Address:  ");
+        temp.setHorizontalAlignment(SwingConstants.RIGHT);
+        panel.add(temp, c);
+        c.gridy = GridBagConstraints.RELATIVE;
+
+        c.fill = GridBagConstraints.NONE;
+        c.ipadx = 80;
+        c.ipady = 7;
+        c.gridx = 12;
+        c.gridy = 1;
+        customerSSN = new JTextField(5);
+        customerSSN.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent ke) {
+                String value = customerSSN.getText();
+                int l = value.length();
+                customerSSN.setEditable((ke.getKeyChar() >= '0' && ke.getKeyChar() <= '9') || ke.getKeyChar() == '\b');
+            }
+        });
+        panel.add(customerSSN, c);
+
+        c.gridy = GridBagConstraints.RELATIVE;
+        customerName = new JTextField(5);
+        customerName.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent ke) {
+                String value = customerName.getText();
+                int l = value.length();
+                customerName.setEditable(ke.getKeyChar() < '0' || ke.getKeyChar() > '9');
+            }
+        });
+        panel.add(customerName, c);
+        c.gridy = GridBagConstraints.RELATIVE;
+        customerAddress = new JTextField(5);
+
+        panel.add(customerAddress, c);
+
+        c.gridy = GridBagConstraints.RELATIVE;
+        bookBtn = new JButton(new AbstractAction("Book Room") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (selection != null) {
+                    String ssn = customerSSN.getText();
+                    if (ssn.length() == 9){
+                        String name = customerName.getText();
+                        String address = customerAddress.getText();
+
+                        StringBuilder str = new StringBuilder();
+                        str.append("INSERT INTO customers VALUES (");
+                        str.append(ssn);
+                        str.append(", ");
+                        int r0 = 1;
+                        try {
+                            ResultSet h0 = connection.runSQL("SELECT hotelID FROM rooms WHERE roomID = " + selection);
+                            h0.next();
+                            r0 = h0.getInt("hotelID");
+                        } catch (SQLException e1) {
+                            e1.printStackTrace();
+                        }
+                        str.append(r0);
+                        str.append(", ");
+                        String r = "1";
+                        try {
+                            ResultSet h = connection.runSQL("SELECT hotelChainID FROM rooms WHERE roomID = " + selection);
+                            h.next();
+                            r = String.valueOf(h.getInt("hotelChainID"));
+                        } catch (SQLException e1) {
+                            e1.printStackTrace();
+                        }
+                        str.append(r);
+                        str.append(", '");
+                        str.append(name);
+                        str.append("', ");
+                        String[] temp = address.split(" ");
+                        str.append(temp[0]);
+                        str.append(", '");
+                        String temp2 = "";
+                        for (int i = 1; i < temp.length; i++) {
+                            temp2 += temp[i];
+                            if (i < temp.length - 1) {
+                                temp2 += " ";
+                            }
+                        }
+                        str.append(temp2);
+                        str.append("', '");
+                        str.append(Date.valueOf(LocalDate.now()));
+                        str.append("')");
+
+                        StringBuilder str2 = new StringBuilder();
+                        str2.append("INSERT INTO bookings VALUES (");
+                        int r1 = 1;
+                        try {
+                            ResultSet h1 = connection.runSQL("SELECT COUNT(bookingID) FROM bookings");
+                            h1.next();
+                            r1 += h1.getInt("count");
+                        } catch (SQLException e1) {
+                            e1.printStackTrace();
+                        }
+                        str2.append(r1);
+                        str2.append(", ");
+                        str2.append(ssn);
+                        str2.append(", ");
+                        str2.append(r0);
+                        str2.append(", ");
+                        str2.append(r);
+                        str2.append(", ");
+                        str2.append(selection);
+                        str2.append(", '");
+                        str2.append(stats[0].toString());
+                        str2.append("', '");
+                        str2.append(stats[1].toString());
+                        str2.append("')");
+
+
+                        try {
+                            connection.runSQL(str.toString());
+                            connection.runSQL(str2.toString());
+                        } catch (SQLException e1){
+                            e1.printStackTrace();
+                        }
+                    } else {
+                        invalidSSN();
+                    }
+                } else {
+                    missingSelection();
+                }
+            }
+        });
+
+        c.ipady = 5;
+        c.ipadx = 10;
+        panel.add(bookBtn, c);
         System.out.println(getSQLquery());
     }
 
-    public void actionPerformed(ActionEvent event) {
-        System.out.println("lmao");
+    private void missingSelection(){
+        JOptionPane.showMessageDialog(this, "Room selection required.");
+    }
+
+    private void invalidSSN(){
+        JOptionPane.showMessageDialog(this, "Invalid SSN.");
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        selection = e.getActionCommand();
+        System.out.println(selection);
     }
 }

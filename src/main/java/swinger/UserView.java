@@ -145,6 +145,10 @@ public class UserView extends JFrame{
                 Object[] query = new Object[8];
                 query[0] = checkInDate.getModel().getValue();
                 query[1] = checkOutDate.getModel().getValue();
+                if (query[0] == null || query[1] == null){
+                    missingDates();
+                    return;
+                }
                 query[2] = roomCapacitiesDropDown.getSelectedItem();
                 query[3] = addressesDropDown.getSelectedItem();
                 query[4] = hotelChainDropDown.getSelectedItem();
@@ -155,5 +159,9 @@ public class UserView extends JFrame{
             }
         });
         add(btn);
+    }
+
+    private void missingDates(){
+        JOptionPane.showMessageDialog(this, "Check-in and Check-out Date Required.");
     }
 }

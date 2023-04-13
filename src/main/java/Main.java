@@ -12,6 +12,7 @@ public class Main {
             connection.create();
             connection.initialize();
             connection.populate();
+            connection.createIndices();
         } catch (SQLException e) {
             System.out.println("eHotel database already exists");
             connection.disconnect();

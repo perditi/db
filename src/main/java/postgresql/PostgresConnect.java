@@ -70,6 +70,17 @@ public class PostgresConnect {
         }
     }
 
+    public void createIndices(){
+        try{
+            String sql = readSQL("src/main/resources/indices.sql");
+            Statement statement = connection.createStatement();
+            statement.executeUpdate(sql);
+            System.out.println("eHotel database indices successfully created");
+        } catch (SQLException e){
+            System.out.println("eHotel database indices already created");
+        }
+    }
+
     public void disconnect(){
         try{
             connection.close();
@@ -103,4 +114,6 @@ public class PostgresConnect {
         Statement statement = connection.createStatement();
         return statement.executeQuery(sql);
     }
+
+
 }
